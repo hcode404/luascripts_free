@@ -2,90 +2,317 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>SMAI | Robux Guard - הגנה על חשבונות</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR Hand Simulator - Pro</title>
+    <!-- ספריות גרפיקה -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #020617; color: #e2e8f0; font-family: 'Segoe UI', system-ui; }
-        .guard-card { background: #0f172a; border: 1px solid #1e40af; border-radius: 24px; transition: 0.3s; }
-        .aura-glow { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
-        .safe { color: #10b981; }
-        .danger { color: #ef4444; }
-        .smai-input { background: #020617; border: 1px solid #1e40af; color: white; border-radius: 12px; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; cursor: none; }
+        canvas { display: block; }
+        
+        #video-container {
+            position: absolute; bottom: 20px; left: 20px;
+            width: 160px; height: 120px;
+            border: 2px solid rgba(0, 242, 255, 0.5);
+            border-radius: 10px; overflow: hidden; z-index: 100;
+            transform: scaleX(-1); opacity: 0.7;
+        }
+        #webcam { width: 100%; height: 100%; object-fit: cover; }
+
+        #hand-cursor {
+            position: absolute; width: 25px; height: 25px;
+            border: 2px solid #00f2ff; border-radius: 50%;
+            pointer-events: none; z-index: 200;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px #00f2ff;
+            transition: width 0.1s, height 0.1s, background 0.1s;
+            display: none;
+        }
+        #hand-cursor.pinching {
+            width: 15px; height: 15px; background: rgba(0, 242, 255, 0.8);
+        }
+
+        #ui-container {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 850px; height: 550px;
+            background: rgba(10, 20, 40, 0.85);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            border-radius: 24px; backdrop-filter: blur(20px);
+            display: none; flex-direction: column;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+            z-index: 50; overflow: hidden;
+        }
+
+        .app-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 25px; padding: 40px; flex-grow: 1;
+        }
+
+        .app-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: all 0.2s; color: white; cursor: pointer;
+        }
+        .app-btn.hovered {
+            background: rgba(0, 242, 255, 0.15);
+            border-color: #00f2ff; transform: scale(1.05);
+        }
+
+        #browser-frame { width: 100%; height: 100%; border: none; background: white; }
+
+        #loading-screen {
+            position: fixed; inset: 0; background: #020617;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        
+        .status-bar { position: absolute; top: 15px; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; color: #00f2ff; font-size: 12px; font-weight: bold; letter-spacing: 1px; z-index: 60; }
     </style>
 </head>
-<body class="p-6 md:p-12">
+<body>
 
-    <header class="text-center mb-16">
-        <h1 class="text-6xl font-black text-blue-500 italic mb-4 tracking-tighter">ROBUX GUARD</h1>
-        <p class="text-xl text-slate-400">הגנה על החשבון שלך מבית <span class="text-blue-400 font-bold font-mono">SMAI</span></p>
-    </header>
-
-    <div class="max-w-4xl mx-auto space-y-10">
-        
-        <section class="guard-card p-8 aura-glow">
-            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
-                <span>🛡️</span> מדד ה-Aura של הסיסמה שלך
-            </h2>
-            <input type="password" id="passInput" oninput="checkPass()" placeholder="הכנס סיסמה לבדיקה..." class="w-full smai-input p-4 mb-4 outline-none focus:border-blue-400 transition">
-            <div class="flex justify-between items-center px-2">
-                <div id="strengthBar" class="h-2 w-2/3 bg-slate-800 rounded-full overflow-hidden">
-                    <div id="strengthFill" class="h-full w-0 transition-all duration-500"></div>
-                </div>
-                <span id="strengthText" class="font-bold text-sm">ממתין...</span>
-            </div>
-            <p class="text-xs text-slate-500 mt-4 text-center text-red-400">* אנחנו לא שומרים את הסיסמה שלך לעולם.</p>
-        </section>
-
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="guard-card p-6">
-                <h3 class="font-bold text-blue-400 mb-4 text-lg">איך לא לקבל פריצה?</h3>
-                <ul class="space-y-3 text-sm">
-                    <li class="flex items-center gap-2">✅ להפעיל 2-Step Verification</li>
-                    <li class="flex items-center gap-2">✅ להוסיף Account Pin</li>
-                    <li class="flex items-center gap-2">✅ לא ללחוץ על לינקים ב-Discord</li>
-                    <li class="flex items-center gap-2">✅ לעולם לא לתת את ה-Cookie שלך</li>
-                </ul>
-            </div>
-            
-            <div class="guard-card p-6 flex flex-col justify-center items-center text-center">
-                <h3 class="font-bold text-red-500 mb-4">הסבר מלא ביוטיוב</h3>
-                <p class="text-xs text-slate-400 mb-4 text-balance">צפה במדריך של anonowner על איך האקרים גונבים חשבונות רובלוקס</p>
-                <a href="https://youtube.com/@anonowner" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-black px-6 py-3 rounded-xl transition">לצפייה בערוץ 🔴</a>
-            </div>
-        </section>
-
+    <div id="loading-screen">
+        <div class="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <h1 class="text-xl font-bold text-white tracking-widest">מערכת VR - אתחול חיישני ידיים</h1>
+        <p id="loading-status" class="text-slate-500 mt-2 text-sm">טוען מודלים של בינה מלאכותית...</p>
     </div>
 
-    
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline></video>
+    </div>
 
-    <script>
-        function checkPass() {
-            const pass = document.getElementById('passInput').value;
-            const fill = document.getElementById('strengthFill');
-            const text = document.getElementById('strengthText');
-            
-            let score = 0;
-            if (pass.length > 8) score += 30;
-            if (/[A-Z]/.test(pass)) score += 20;
-            if (/[0-9]/.test(pass)) score += 20;
-            if (/[^A-Za-z0-9]/.test(pass)) score += 30;
+    <div id="hand-cursor"></div>
 
-            fill.style.width = score + '%';
+    <div id="ui-container">
+        <div class="h-12 bg-black/40 flex items-center px-6 border-b border-white/10">
+            <div class="flex gap-2">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            </div>
+            <div id="url-display" class="mx-auto text-xs text-slate-500 font-mono">VR://HOME</div>
+            <button onclick="window.goHome()" class="text-xs text-cyan-400 hover:text-white border border-cyan-400/30 px-3 py-1 rounded-full pointer-events-auto">חזרה לבית</button>
+        </div>
+
+        <div id="home-view" class="app-grid">
+            <div class="app-btn" onclick="window.openWeb('https://www.google.com/search?igu=1')">
+                <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" class="h-6 mb-3">
+                <span class="text-xs uppercase tracking-tighter">גוגל</span>
+            </div>
+            <div class="app-btn" onclick="window.openWeb('https://www.wikipedia.org')">
+                <span class="text-4xl mb-2">📚</span>
+                <span class="text-xs uppercase tracking-tighter">ויקיפדיה</span>
+            </div>
+            <div class="app-btn" onclick="window.openWeb('https://scratch.mit.edu/projects/60917032/embed')">
+                <span class="text-4xl mb-2">🕹️</span>
+                <span class="text-xs uppercase tracking-tighter">משחק וידאו</span>
+            </div>
+            <div class="app-btn" onclick="window.openWeb('https://www.youtube.com/embed/dQw4w9WgXcQ')">
+                <span class="text-4xl mb-2">🎥</span>
+                <span class="text-xs uppercase tracking-tighter">YouTube</span>
+            </div>
+            <div class="app-btn" onclick="window.openWeb('https://eyes.nasa.gov/apps/solar-system/#/home')">
+                <span class="text-4xl mb-2">🚀</span>
+                <span class="text-xs uppercase tracking-tighter">נאס"א VR</span>
+            </div>
+            <div class="app-btn" onclick="location.reload()">
+                <span class="text-4xl mb-2">🛠️</span>
+                <span class="text-xs uppercase tracking-tighter">כיול מחדש</span>
+            </div>
+        </div>
+
+        <div id="browser-view" class="hidden h-full">
+            <iframe id="browser-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div>HAND TRACKING: <span id="track-status" class="text-red-500">OFF</span></div>
+        <div id="time-display">00:00</div>
+        <div>BY HAREL</div>
+    </div>
+
+    <script type="module">
+        import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+
+        let scene, camera, renderer, starField;
+        let lastPinch = false;
+        let handLandmarker;
+        const cursor = document.getElementById('hand-cursor');
+        const uiContainer = document.getElementById('ui-container');
+        const video = document.getElementById('webcam');
+        const statusLabel = document.getElementById('track-status');
+        const loadingStatus = document.getElementById('loading-status');
+
+        // --- Three.js Environment ---
+        function initWorld() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020617);
             
-            if (score < 40) {
-                fill.className = 'h-full bg-red-500';
-                text.innerText = 'Low Aura 🔴';
-                text.className = 'danger font-bold text-sm';
-            } else if (score < 80) {
-                fill.className = 'h-full bg-yellow-500';
-                text.innerText = 'Mid Aura 🟡';
-                text.className = 'text-yellow-500 font-bold text-sm';
-            } else {
-                fill.className = 'h-full bg-green-500';
-                text.innerText = 'GOD AURA ⚡';
-                text.className = 'safe font-bold text-sm';
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.6, 5);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            const pLight = new THREE.PointLight(0x00f2ff, 1, 50);
+            pLight.position.set(0, 5, 5);
+            scene.add(pLight);
+
+            const grid = new THREE.GridHelper(100, 50, 0x00f2ff, 0x0f172a);
+            scene.add(grid);
+
+            const stars = new THREE.BufferGeometry();
+            const points = [];
+            for(let i=0; i<8000; i++) points.push((Math.random()-0.5)*500, (Math.random()-0.5)*500, (Math.random()-0.5)*500);
+            stars.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+            starField = new THREE.Points(stars, new THREE.PointsMaterial({color: 0xffffff, size: 0.3}));
+            scene.add(starField);
+
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (starField) starField.rotation.y += 0.0003;
+            renderer.render(scene, camera);
+        }
+
+        // --- Hand Tracking Logic ---
+        async function initAI() {
+            try {
+                loadingStatus.innerText = "מוריד נתוני חיישנים...";
+                const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+                
+                loadingStatus.innerText = "מאתחל מנוע זיהוי ידיים...";
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 1
+                });
+
+                loadingStatus.innerText = "מפעיל מצלמה...";
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                
+                video.onloadeddata = () => {
+                    document.getElementById('loading-screen').style.display = 'none';
+                    uiContainer.style.display = 'flex';
+                    processVideo();
+                };
+            } catch (err) {
+                console.error(err);
+                loadingStatus.innerHTML = `<span class="text-red-500 font-bold">שגיאה: ${err.message}</span>`;
             }
         }
+
+        function processVideo() {
+            if (video.readyState >= 2) {
+                const results = handLandmarker.detectForVideo(video, performance.now());
+                onResults(results);
+            }
+            requestAnimationFrame(processVideo);
+        }
+
+        function onResults(results) {
+            if (results.landmarks && results.landmarks.length > 0) {
+                statusLabel.innerText = "ON";
+                statusLabel.className = "text-green-500";
+                
+                const landmarks = results.landmarks[0];
+                const indexTip = landmarks[8];
+                const thumbTip = landmarks[4];
+
+                // המרה לקואורדינטות מסך
+                const x = (1 - indexTip.x) * window.innerWidth;
+                const y = indexTip.y * window.innerHeight;
+
+                cursor.style.display = 'block';
+                cursor.style.left = `${x}px`;
+                cursor.style.top = `${y}px`;
+
+                // חישוב מרחק צביטה
+                const dist = Math.hypot(indexTip.x - thumbTip.x, indexTip.y - thumbTip.y);
+                const isPinching = dist < 0.055;
+
+                cursor.classList.toggle('pinching', isPinching);
+
+                // סימולציית מבט (סיבוב מצלמה)
+                camera.rotation.y += ((0.5 - indexTip.x) * 0.15 - camera.rotation.y) * 0.1;
+                camera.rotation.x += ((0.5 - indexTip.y) * 0.08 - camera.rotation.x) * 0.1;
+
+                handleHover(x, y);
+                
+                if (isPinching && !lastPinch) {
+                    triggerClick(x, y);
+                }
+                lastPinch = isPinching;
+            } else {
+                statusLabel.innerText = "LOST";
+                statusLabel.className = "text-yellow-500";
+                cursor.style.display = 'none';
+            }
+        }
+
+        function handleHover(x, y) {
+            const hovered = document.elementFromPoint(x, y);
+            document.querySelectorAll('.app-btn').forEach(btn => {
+                btn.classList.toggle('hovered', btn.contains(hovered));
+            });
+        }
+
+        function triggerClick(x, y) {
+            const clicked = document.elementFromPoint(x, y);
+            if (clicked && clicked.onclick) {
+                clicked.click();
+            } else if (clicked) {
+                // לחיצה על אלמנטים פנימיים
+                clicked.parentElement?.click();
+            }
+        }
+
+        // הגדרת פונקציות גלובליות לשימוש ב-HTML
+        window.openWeb = (url) => {
+            document.getElementById('home-view').classList.add('hidden');
+            document.getElementById('browser-view').classList.remove('hidden');
+            document.getElementById('browser-frame').src = url;
+            document.getElementById('url-display').innerText = url.toUpperCase();
+        };
+
+        window.goHome = () => {
+            document.getElementById('browser-view').classList.add('hidden');
+            document.getElementById('home-view').classList.remove('hidden');
+            document.getElementById('browser-frame').src = "";
+            document.getElementById('url-display').innerText = "VR://HOME";
+        };
+
+        // שעון
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('time-display').innerText = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0');
+        }, 1000);
+
+        window.onload = () => {
+            initWorld();
+            initAI();
+        };
+
+        window.addEventListener('resize', () => {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        });
     </script>
 </body>
 </html>
