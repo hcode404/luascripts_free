@@ -1,27 +1,91 @@
-<div class="lg:col-span-3 mb-12">
-    <h2 class="text-3xl font-bold text-white mb-6 flex items-center gap-3">
-        <span class="text-blue-500">/</span> מרכז הלמידה של SMAI
-    </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>SMAI | Robux Guard - הגנה על חשבונות</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #020617; color: #e2e8f0; font-family: 'Segoe UI', system-ui; }
+        .guard-card { background: #0f172a; border: 1px solid #1e40af; border-radius: 24px; transition: 0.3s; }
+        .aura-glow { box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        .safe { color: #10b981; }
+        .danger { color: #ef4444; }
+        .smai-input { background: #020617; border: 1px solid #1e40af; color: white; border-radius: 12px; }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+
+    <header class="text-center mb-16">
+        <h1 class="text-6xl font-black text-blue-500 italic mb-4 tracking-tighter">ROBUX GUARD</h1>
+        <p class="text-xl text-slate-400">הגנה על החשבון שלך מבית <span class="text-blue-400 font-bold font-mono">SMAI</span></p>
+    </header>
+
+    <div class="max-w-4xl mx-auto space-y-10">
         
-        <div class="cyber-card p-6 rounded-2xl border-l-4 border-l-yellow-500">
-            <h3 class="text-xl font-bold text-yellow-500 mb-2">Cross-Site Scripting (XSS)</h3>
-            <p class="text-slate-400 text-sm mb-4">איך האקרים מזריקים קוד זדוני לאתרים וגונבים עוגיות (Cookies).</p>
-            <button onclick="showLesson('xss')" class="bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-2 px-4 rounded text-xs transition">למד איך להתגונן</button>
-        </div>
+        <section class="guard-card p-8 aura-glow">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span>🛡️</span> מדד ה-Aura של הסיסמה שלך
+            </h2>
+            <input type="password" id="passInput" oninput="checkPass()" placeholder="הכנס סיסמה לבדיקה..." class="w-full smai-input p-4 mb-4 outline-none focus:border-blue-400 transition">
+            <div class="flex justify-between items-center px-2">
+                <div id="strengthBar" class="h-2 w-2/3 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="strengthFill" class="h-full w-0 transition-all duration-500"></div>
+                </div>
+                <span id="strengthText" class="font-bold text-sm">ממתין...</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-4 text-center text-red-400">* אנחנו לא שומרים את הסיסמה שלך לעולם.</p>
+        </section>
 
-        <div class="cyber-card p-6 rounded-2xl border-l-4 border-l-red-600">
-            <h3 class="text-xl font-bold text-red-600 mb-2">Worm Virus (וירוס תולעת)</h3>
-            <p class="text-slate-400 text-sm mb-4">וירוס שמשכפל את עצמו ברשת ללא עזרת אדם. למד איך רשתות קורסות.</p>
-            <button onclick="showLesson('worm')" class="bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-4 rounded text-xs transition">למד על שכפול והגנה</button>
-        </div>
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="guard-card p-6">
+                <h3 class="font-bold text-blue-400 mb-4 text-lg">איך לא לקבל פריצה?</h3>
+                <ul class="space-y-3 text-sm">
+                    <li class="flex items-center gap-2">✅ להפעיל 2-Step Verification</li>
+                    <li class="flex items-center gap-2">✅ להוסיף Account Pin</li>
+                    <li class="flex items-center gap-2">✅ לא ללחוץ על לינקים ב-Discord</li>
+                    <li class="flex items-center gap-2">✅ לעולם לא לתת את ה-Cookie שלך</li>
+                </ul>
+            </div>
+            
+            <div class="guard-card p-6 flex flex-col justify-center items-center text-center">
+                <h3 class="font-bold text-red-500 mb-4">הסבר מלא ביוטיוב</h3>
+                <p class="text-xs text-slate-400 mb-4 text-balance">צפה במדריך של anonowner על איך האקרים גונבים חשבונות רובלוקס</p>
+                <a href="https://youtube.com/@anonowner" target="_blank" class="bg-red-600 hover:bg-red-500 text-white font-black px-6 py-3 rounded-xl transition">לצפייה בערוץ 🔴</a>
+            </div>
+        </section>
 
     </div>
-</div>
 
-<div id="lessonModal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-    <div class="cyber-card max-w-2xl w-full p-8 rounded-3xl overflow-y-auto max-h-[90vh]">
-        <div id="lessonContent"></div>
-        <button onclick="closeLesson()" class="mt-6 text-slate-500 hover:text-white underline text-sm">סגור שיעור</button>
-    </div>
-</div>
+    
+
+    <script>
+        function checkPass() {
+            const pass = document.getElementById('passInput').value;
+            const fill = document.getElementById('strengthFill');
+            const text = document.getElementById('strengthText');
+            
+            let score = 0;
+            if (pass.length > 8) score += 30;
+            if (/[A-Z]/.test(pass)) score += 20;
+            if (/[0-9]/.test(pass)) score += 20;
+            if (/[^A-Za-z0-9]/.test(pass)) score += 30;
+
+            fill.style.width = score + '%';
+            
+            if (score < 40) {
+                fill.className = 'h-full bg-red-500';
+                text.innerText = 'Low Aura 🔴';
+                text.className = 'danger font-bold text-sm';
+            } else if (score < 80) {
+                fill.className = 'h-full bg-yellow-500';
+                text.innerText = 'Mid Aura 🟡';
+                text.className = 'text-yellow-500 font-bold text-sm';
+            } else {
+                fill.className = 'h-full bg-green-500';
+                text.innerText = 'GOD AURA ⚡';
+                text.className = 'safe font-bold text-sm';
+            }
+        }
+    </script>
+</body>
+</html>
